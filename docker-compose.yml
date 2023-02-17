@@ -1,0 +1,48 @@
+version: "3.2"
+
+services:
+  db:
+    container_name: "db"
+    build: ./docker/db/.
+    # コンテナが落ちたら再起動する
+    restart: always
+
+    ports:
+      - "3306:3306"
+    
+    environment:      
+      TZ: Asia/Tokyo
+      LANG: ja_JP.UTF-8
+      MYSQL_DATABASE: manhole
+      MYSQL_USER: manhole
+      MYSQL_PASSWORD: manhole
+      MYSQL_ROOT_PASSWORD: root # ルートパスワード
+
+    volumes:
+      - ./docker/db/conf.d/my.cnf:/etc/mysql/conf.d/my.cnf # MySQLの基本設定(文字化け対策)
+        # ./db/initdb.d直下のファイルを使い定義どおりにテーブル作成
+      - ./docker/db/initdb.d:/docker-entrypoint-initdb.d 
+      - ./db/log:/var/log/mysql # ログの保存
+
+    command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+   
+
+  # express.js
+  api:
+    container_name: "api"
+    build:
+      context: .
+      dockerfile: ./docker/api/Dockerfile
+    ports:
+      - 49160:8080
+    volumes:
+      - ./app:/workspace/scripts
+    # networks:
+    #   - local-net
+    working_dir: /workspace/scripts
+    depends_on:
+      - db
+    # コンテナが落ちたら再起動する
+    restart: always
+    tty: true
+    stdin_open: true
